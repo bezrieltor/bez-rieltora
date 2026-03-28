@@ -401,5 +401,5 @@ export default function ListingPage() {
         </div>
       </div>
     </div>
-  );
+  )
 }
