@@ -26,8 +26,15 @@ export default function ListingPage() {
   const [reported, setReported] = useState(false);
 
   useEffect(() => {
-    const stored = localStorage.getItem("ads");
-    if (stored) {
+    if (typeof window === "undefined") return;
+
+    try {
+      const stored = window.localStorage.getItem("ads");
+      if (!stored) {
+        setAd(null);
+        return;
+      }
+
       const ads: Ad[] = JSON.parse(stored);
 
       const validAds = ads.filter(
@@ -40,6 +47,9 @@ export default function ListingPage() {
 
       const foundAd = validAds.find((item) => item.id === listingId);
       setAd(foundAd ?? null);
+    } catch (error) {
+      console.error("Failed to read listing from localStorage:", error);
+      setAd(null);
     }
   }, [listingId]);
 
@@ -112,6 +122,31 @@ export default function ListingPage() {
       </div>
     );
   }
+
+  const handleReport = () => {
+    setReported(true);
+
+    if (typeof window === "undefined") return;
+
+    try {
+      const stored = window.localStorage.getItem("ads");
+      if (!stored) return;
+
+      const ads: Ad[] = JSON.parse(stored);
+      const targetIndex = ads.findIndex((item) => item.id === listingId);
+
+      if (targetIndex !== -1) {
+        ads[targetIndex].status = "reported";
+        window.localStorage.setItem("ads", JSON.stringify(ads));
+        setAd({ ...ads[targetIndex] });
+      }
+
+      alert("Дякуємо. Оголошення приховано та позначено для перевірки.");
+    } catch (error) {
+      console.error("Failed to report listing in localStorage:", error);
+      alert("Сталася помилка при оновленні оголошення.");
+    }
+  };
 
   return (
     <div
@@ -345,25 +380,7 @@ export default function ListingPage() {
                 </p>
 
                 <button
-                  onClick={() => {
-                    setReported(true);
-
-                    const stored = localStorage.getItem("ads");
-                    if (stored) {
-                      const ads: Ad[] = JSON.parse(stored);
-                      const targetIndex = ads.findIndex(
-                        (item) => item.id === listingId
-                      );
-
-                      if (targetIndex !== -1) {
-                        ads[targetIndex].status = "reported";
-                        localStorage.setItem("ads", JSON.stringify(ads));
-                        setAd({ ...ads[targetIndex] });
-                      }
-                    }
-
-                    alert("Дякуємо. Оголошення приховано та позначено для перевірки.");
-                  }}
+                  onClick={handleReport}
                   style={{
                     width: "100%",
                     padding: "14px 18px",

@@ -117,8 +117,16 @@ export default function HomePage() {
   const [selectedCity, setSelectedCity] = useState<string>("Усі міста");
 
   useEffect(() => {
-    const stored = localStorage.getItem("ads");
-    if (stored) {
+    if (typeof window === "undefined") return;
+
+    try {
+      const stored = window.localStorage.getItem("ads");
+
+      if (!stored) {
+        setAds([]);
+        return;
+      }
+
       const parsed: Ad[] = JSON.parse(stored);
 
       const validAds = parsed.filter(
@@ -130,6 +138,9 @@ export default function HomePage() {
       );
 
       setAds(validAds);
+    } catch (error) {
+      console.error("Failed to read ads from localStorage:", error);
+      setAds([]);
     }
   }, []);
 
@@ -213,7 +224,8 @@ export default function HomePage() {
                 fontSize: "16px",
               }}
             >
-              Список оголошень безкоштовний. Контакт власника на старті відкритий безкоштовно.
+              Список оголошень безкоштовний. Контакт власника на старті відкритий
+              безкоштовно.
             </p>
 
             <div
@@ -372,7 +384,8 @@ export default function HomePage() {
               fontSize: "16px",
             }}
           >
-            Додай перше оголошення і одразу подивись, як воно виглядає для людини, яка шукає житло.
+            Додай перше оголошення і одразу подивись, як воно виглядає для
+            людини, яка шукає житло.
           </p>
 
           <Link
