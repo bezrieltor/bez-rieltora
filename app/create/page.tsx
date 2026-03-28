@@ -1,25 +1,10 @@
 "use client";
 
 import React, { ChangeEvent, useMemo, useState } from "react";
+import { supabase } from "@/lib/supabase";
 
 type PropertyType = "Квартира" | "Дім" | "Гараж";
 type MessengerType = "Telegram" | "Viber" | "WhatsApp" | "Телефон";
-type AdStatus = "active" | "suspicious" | "reported";
-
-type Ad = {
-  id: string;
-  propertyType: PropertyType;
-  oblast: string;
-  district: string;
-  city: string;
-  price: string;
-  contact: string;
-  messenger: MessengerType;
-  image: string;
-  status: AdStatus;
-  isOwnerConfirmed: boolean;
-  createdAt: string;
-};
 
 const oblastDistricts: Record<string, string[]> = {
   "Київська область": ["Білоцерківський", "Бориспільський", "Броварський"],
@@ -55,6 +40,7 @@ export default function CreatePage() {
   const [messenger, setMessenger] = useState<MessengerType>("Telegram");
   const [image, setImage] = useState<string>("");
   const [isOwnerConfirmed, setIsOwnerConfirmed] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const districts = useMemo(() => oblastDistricts[oblast] ?? [], [oblast]);
   const cities = useMemo(() => oblastCenterCities[oblast] ?? [], [oblast]);
@@ -75,7 +61,7 @@ export default function CreatePage() {
     reader.readAsDataURL(file);
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!oblast || !district || !city || !price || !contact) {
       alert("Заповни всі поля");
       return;
@@ -86,31 +72,63 @@ export default function CreatePage() {
       return;
     }
 
-    const stored = localStorage.getItem("ads");
-    const ads: Ad[] = stored ? JSON.parse(stored) : [];
+    setLoading(true);
 
-    const newAd: Ad = {
-      id: makeAdId(),
-      propertyType,
-      oblast,
-      district,
-      city,
-      price,
-      contact,
-      messenger,
-      image,
-      status: "active",
-      isOwnerConfirmed: true,
-      createdAt: new Date().toISOString(),
-    };
+    const normalizedContact = contact.trim().toLowerCase();
 
-    ads.push(newAd);
-    localStorage.setItem("ads", JSON.stringify(ads));
+    const { data: existing, error: existingError } = await supabase
+      .from("listings")
+      .select("id, contact")
+      .eq("contact", normalizedContact);
+
+    if (existingError) {
+      console.error(existingError);
+      alert("Помилка перевірки контакту");
+      setLoading(false);
+      return;
+    }
+
+    if (existing && existing.length >= 2) {
+      alert("Максимум 2 оголошення на один контакт");
+      setLoading(false);
+      return;
+    }
+
+    const newStatus = existing && existing.length >= 1 ? "suspicious" : "active";
+
+    const { error } = await supabase.from("listings").insert([
+      {
+        id: makeAdId(),
+        propertytype: propertyType,
+        oblast,
+        district,
+        city,
+        price,
+        contact: normalizedContact,
+        messenger,
+        image,
+        status: newStatus,
+        createdat: new Date().toISOString(),
+      },
+    ]);
+
+    setLoading(false);
+
+    if (error) {
+      console.error(error);
+      alert("Помилка при збереженні");
+      return;
+    }
 
     alert("Оголошення додано");
 
+    setPropertyType("Квартира");
+    setOblast("м. Київ");
+    setCity(oblastCenterCities["м. Київ"][0]);
+    setDistrict(oblastDistricts["м. Київ"][0]);
     setPrice("");
     setContact("");
+    setMessenger("Telegram");
     setImage("");
     setIsOwnerConfirmed(false);
   };
@@ -119,7 +137,10 @@ export default function CreatePage() {
     <div style={{ maxWidth: "700px", margin: "0 auto", padding: "20px" }}>
       <h1>Додати оголошення</h1>
 
-      <select value={propertyType} onChange={(e) => setPropertyType(e.target.value as PropertyType)}>
+      <select
+        value={propertyType}
+        onChange={(e) => setPropertyType(e.target.value as PropertyType)}
+      >
         <option>Квартира</option>
         <option>Дім</option>
         <option>Гараж</option>
@@ -143,10 +164,22 @@ export default function CreatePage() {
         ))}
       </select>
 
-      <input placeholder="Ціна" value={price} onChange={(e) => setPrice(e.target.value)} />
-      <input placeholder="Контакт" value={contact} onChange={(e) => setContact(e.target.value)} />
+      <input
+        placeholder="Ціна"
+        value={price}
+        onChange={(e) => setPrice(e.target.value)}
+      />
 
-      <select value={messenger} onChange={(e) => setMessenger(e.target.value as MessengerType)}>
+      <input
+        placeholder="Контакт"
+        value={contact}
+        onChange={(e) => setContact(e.target.value)}
+      />
+
+      <select
+        value={messenger}
+        onChange={(e) => setMessenger(e.target.value as MessengerType)}
+      >
         <option>Telegram</option>
         <option>Viber</option>
         <option>WhatsApp</option>
@@ -156,11 +189,17 @@ export default function CreatePage() {
       <input type="file" onChange={handleImageChange} />
 
       <label>
-        <input type="checkbox" checked={isOwnerConfirmed} onChange={(e) => setIsOwnerConfirmed(e.target.checked)} />
+        <input
+          type="checkbox"
+          checked={isOwnerConfirmed}
+          onChange={(e) => setIsOwnerConfirmed(e.target.checked)}
+        />
         Я власник
       </label>
 
-      <button onClick={handleSubmit}>Додати</button>
+      <button onClick={handleSubmit} disabled={loading}>
+        {loading ? "Збереження..." : "Додати"}
+      </button>
     </div>
   );
 }
