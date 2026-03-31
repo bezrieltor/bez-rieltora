@@ -5,6 +5,10 @@ export const metadata: Metadata = {
   title: "БезРієлтора | No Realtor",
   description:
     "Оголошення по Україні без рієлторів. Прямий контакт власника. Знайди квартиру без комісії.",
+
+  verification: {
+    google: "qL18S4J0gafPHZk9CSwWWg2fU1YaeAL3IEmgbuAz6sw",
+  },
 };
 
 export default function RootLayout({
@@ -14,12 +18,6 @@ export default function RootLayout({
 }) {
   return (
     <html lang="uk">
-      <head>
-        <meta
-          name="google-site-verification"
-          content="qL18S4J0gafPHZk9CSwWWg2fU1YaeAL3IEmgbuAz6sw"
-        />
-      </head>
       <body
         style={{
           margin: 0,
