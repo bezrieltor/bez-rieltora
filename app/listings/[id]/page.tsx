@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
+import { supabase } from "@/lib/supabase";
 
 type Ad = {
   id: string;
@@ -26,32 +27,56 @@ export default function ListingPage() {
   const [reported, setReported] = useState(false);
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
+    const fetchAd = async () => {
+      const { data, error } = await supabase
+        .from("listings")
+        .select("*")
+        .eq("id", listingId)
+        .single();
 
-    try {
-      const stored = window.localStorage.getItem("ads");
-      if (!stored) {
+      if (error) {
+        console.error(error);
         setAd(null);
         return;
       }
 
-      const ads: Ad[] = JSON.parse(stored);
+      setAd({
+        id: data.id,
+        propertyType: data.propertytype,
+        oblast: data.oblast,
+        district: data.district,
+        city: data.city,
+        price: data.price,
+        contact: data.contact,
+        messenger: data.messenger,
+        image: data.image,
+        status: data.status,
+      });
+    };
 
-      const validAds = ads.filter(
-        (item) =>
-          item &&
-          typeof item === "object" &&
-          typeof item.id === "string" &&
-          item.id.trim() !== ""
-      );
-
-      const foundAd = validAds.find((item) => item.id === listingId);
-      setAd(foundAd ?? null);
-    } catch (error) {
-      console.error("Failed to read listing from localStorage:", error);
-      setAd(null);
+    if (listingId) {
+      fetchAd();
     }
   }, [listingId]);
+
+  const handleReport = async () => {
+    if (!listingId) return;
+
+    const { error } = await supabase
+      .from("listings")
+      .update({ status: "reported" })
+      .eq("id", listingId);
+
+    if (error) {
+      console.error(error);
+      alert("Сталася помилка при оновленні оголошення.");
+      return;
+    }
+
+    setReported(true);
+    setAd((prev) => (prev ? { ...prev, status: "reported" } : prev));
+    alert("Дякуємо. Оголошення приховано та позначено для перевірки.");
+  };
 
   if (!ad) {
     return (
@@ -122,31 +147,6 @@ export default function ListingPage() {
       </div>
     );
   }
-
-  const handleReport = () => {
-    setReported(true);
-
-    if (typeof window === "undefined") return;
-
-    try {
-      const stored = window.localStorage.getItem("ads");
-      if (!stored) return;
-
-      const ads: Ad[] = JSON.parse(stored);
-      const targetIndex = ads.findIndex((item) => item.id === listingId);
-
-      if (targetIndex !== -1) {
-        ads[targetIndex].status = "reported";
-        window.localStorage.setItem("ads", JSON.stringify(ads));
-        setAd({ ...ads[targetIndex] });
-      }
-
-      alert("Дякуємо. Оголошення приховано та позначено для перевірки.");
-    } catch (error) {
-      console.error("Failed to report listing in localStorage:", error);
-      alert("Сталася помилка при оновленні оголошення.");
-    }
-  };
 
   return (
     <div
@@ -401,5 +401,5 @@ export default function ListingPage() {
         </div>
       </div>
     </div>
-  )
+  );
 }

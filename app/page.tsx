@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { supabase } from "@/lib/supabase";
 
 type Ad = {
   id: string;
@@ -117,31 +118,36 @@ export default function HomePage() {
   const [selectedCity, setSelectedCity] = useState<string>("Усі міста");
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
+    const fetchAds = async () => {
+      const { data, error } = await supabase
+        .from("listings")
+        .select("*")
+        .order("createdat", { ascending: false });
 
-    try {
-      const stored = window.localStorage.getItem("ads");
-
-      if (!stored) {
+      if (error) {
+        console.error(error);
         setAds([]);
         return;
       }
 
-      const parsed: Ad[] = JSON.parse(stored);
+      const formatted: Ad[] = (data || []).map((item: any) => ({
+        id: item.id,
+        propertyType: item.propertytype,
+        oblast: item.oblast,
+        district: item.district,
+        city: item.city,
+        price: item.price,
+        contact: item.contact,
+        messenger: item.messenger,
+        image: item.image,
+        status: item.status,
+        createdAt: item.createdat,
+      }));
 
-      const validAds = parsed.filter(
-        (ad) =>
-          ad &&
-          typeof ad === "object" &&
-          typeof ad.id === "string" &&
-          ad.id.trim() !== ""
-      );
+      setAds(formatted);
+    };
 
-      setAds(validAds);
-    } catch (error) {
-      console.error("Failed to read ads from localStorage:", error);
-      setAds([]);
-    }
+    fetchAds();
   }, []);
 
   const cleanAds = useMemo(() => {
@@ -174,7 +180,7 @@ export default function HomePage() {
       result = result.filter((ad) => ad.city === selectedCity);
     }
 
-    return [...result].reverse();
+    return result;
   }, [cleanAds, selectedOblast, selectedCity]);
 
   return (
