@@ -1,3 +1,12 @@
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  metadataBase: new URL("https://bez-rieltora-git-main-bezrieltors-projects.vercel.app"),
+  title: "БезРієлтора | No Realtor",
+  description:
+    "Оголошення по Україні без рієлторів. Прямий контакт власника. Знайди квартиру без комісії.",
+};
+
 export default function RootLayout({
   children,
 }: {
@@ -60,13 +69,7 @@ export default function RootLayout({
           </a>
         </header>
 
-        <main
-          style={{
-            padding: "24px",
-          }}
-        >
-          {children}
-        </main>
+        <main style={{ padding: "24px" }}>{children}</main>
       </body>
     </html>
   );
