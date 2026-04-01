@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 
@@ -19,12 +19,75 @@ type Ad = {
 
 const disabledOblasts = ["Донецька область", "Луганська область"];
 
+function parseImages(imageValue: string | null | undefined): string[] {
+  if (!imageValue) return [];
+
+  try {
+    const parsed = JSON.parse(imageValue);
+    if (Array.isArray(parsed)) {
+      return parsed.filter((item) => typeof item === "string" && item.trim() !== "");
+    }
+  } catch {
+    // старий формат з одним фото
+  }
+
+  return typeof imageValue === "string" && imageValue.trim() !== ""
+    ? [imageValue]
+    : [];
+}
+
+function normalizePhoneForTel(value: string): string {
+  const trimmed = value.trim();
+  const hasPlus = trimmed.startsWith("+");
+  const digitsOnly = trimmed.replace(/\D/g, "");
+  return hasPlus ? `+${digitsOnly}` : digitsOnly;
+}
+
+function getMessengerHref(messenger: string, contact: string): string | null {
+  const trimmed = contact.trim();
+
+  if (!trimmed) return null;
+
+  if (messenger === "Телефон") {
+    const telValue = normalizePhoneForTel(trimmed);
+    return telValue ? `tel:${telValue}` : null;
+  }
+
+  if (messenger === "Telegram") {
+    if (trimmed.startsWith("@")) {
+      return `https://t.me/${trimmed.slice(1)}`;
+    }
+    return `https://t.me/${trimmed}`;
+  }
+
+  if (messenger === "WhatsApp") {
+    const phone = normalizePhoneForTel(trimmed).replace("+", "");
+    return phone ? `https://wa.me/${phone}` : null;
+  }
+
+  if (messenger === "Viber") {
+    const phone = normalizePhoneForTel(trimmed);
+    return phone ? `viber://chat?number=${encodeURIComponent(phone)}` : null;
+  }
+
+  return null;
+}
+
+function getMessengerButtonText(messenger: string): string {
+  if (messenger === "Телефон") return "Подзвонити";
+  if (messenger === "Telegram") return "Написати в Telegram";
+  if (messenger === "WhatsApp") return "Написати в WhatsApp";
+  if (messenger === "Viber") return "Написати в Viber";
+  return "Зв’язатися";
+}
+
 export default function ListingPage() {
   const params = useParams();
   const listingId = String(params?.id ?? "");
 
   const [ad, setAd] = useState<Ad | null>(null);
   const [reported, setReported] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<string>("");
 
   useEffect(() => {
     const fetchAd = async () => {
@@ -40,7 +103,7 @@ export default function ListingPage() {
         return;
       }
 
-      setAd({
+      const nextAd: Ad = {
         id: data.id,
         propertyType: data.propertytype,
         oblast: data.oblast,
@@ -51,13 +114,24 @@ export default function ListingPage() {
         messenger: data.messenger,
         image: data.image,
         status: data.status,
-      });
+      };
+
+      setAd(nextAd);
+
+      const parsedImages = parseImages(nextAd.image);
+      setSelectedImage(parsedImages[0] ?? "");
     };
 
     if (listingId) {
       fetchAd();
     }
   }, [listingId]);
+
+  const images = useMemo(() => parseImages(ad?.image), [ad?.image]);
+  const messengerHref = useMemo(
+    () => getMessengerHref(ad?.messenger ?? "", ad?.contact ?? ""),
+    [ad?.messenger, ad?.contact]
+  );
 
   const handleReport = async () => {
     if (!listingId) return;
@@ -165,9 +239,9 @@ export default function ListingPage() {
           border: "1px solid #e5e7eb",
         }}
       >
-        {ad.image ? (
+        {selectedImage ? (
           <img
-            src={ad.image}
+            src={selectedImage}
             alt={ad.propertyType}
             style={{
               width: "100%",
@@ -190,6 +264,44 @@ export default function ListingPage() {
             }}
           >
             Немає фото
+          </div>
+        )}
+
+        {images.length > 1 && (
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fill, minmax(120px, 1fr))",
+              gap: "10px",
+              padding: "14px 14px 0 14px",
+              background: "#ffffff",
+            }}
+          >
+            {images.map((img, index) => (
+              <button
+                key={`${img}-${index}`}
+                onClick={() => setSelectedImage(img)}
+                style={{
+                  padding: 0,
+                  border: selectedImage === img ? "2px solid #2563eb" : "1px solid #e5e7eb",
+                  borderRadius: "10px",
+                  overflow: "hidden",
+                  cursor: "pointer",
+                  background: "#fff",
+                }}
+              >
+                <img
+                  src={img}
+                  alt={`Фото ${index + 1}`}
+                  style={{
+                    width: "100%",
+                    height: "90px",
+                    objectFit: "cover",
+                    display: "block",
+                  }}
+                />
+              </button>
+            ))}
           </div>
         )}
 
@@ -271,7 +383,7 @@ export default function ListingPage() {
                 border: "1px solid #e2e8f0",
               }}
             >
-              <strong>Обласне місто:</strong>
+              <strong>Місто:</strong>
               <div style={{ marginTop: "6px", color: "#475569" }}>
                 {ad.city}
               </div>
@@ -339,9 +451,47 @@ export default function ListingPage() {
               <p style={{ marginTop: 0, marginBottom: "8px" }}>
                 <strong>Месенджер:</strong> {ad.messenger}
               </p>
-              <p style={{ margin: 0 }}>
+              <p style={{ marginTop: 0, marginBottom: "14px" }}>
                 <strong>Контакт:</strong> {ad.contact}
               </p>
+
+              {messengerHref && (
+                <a
+                  href={messengerHref}
+                  target={ad.messenger === "Телефон" ? "_self" : "_blank"}
+                  rel="noreferrer"
+                  style={{
+                    display: "inline-block",
+                    padding: "12px 16px",
+                    background: "#2563eb",
+                    color: "#ffffff",
+                    textDecoration: "none",
+                    borderRadius: "10px",
+                    fontWeight: 700,
+                  }}
+                >
+                  {getMessengerButtonText(ad.messenger)}
+                </a>
+              )}
+
+              {ad.messenger !== "Телефон" && (
+                <div style={{ marginTop: "12px" }}>
+                  <a
+                    href={`tel:${normalizePhoneForTel(ad.contact)}`}
+                    style={{
+                      display: "inline-block",
+                      padding: "12px 16px",
+                      background: "#16a34a",
+                      color: "#ffffff",
+                      textDecoration: "none",
+                      borderRadius: "10px",
+                      fontWeight: 700,
+                    }}
+                  >
+                    Подзвонити
+                  </a>
+                </div>
+              )}
             </div>
 
             {!reported && (

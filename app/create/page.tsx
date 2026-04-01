@@ -192,6 +192,20 @@ function makeAdId() {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 }
 
+function readFilesAsDataUrls(files: File[]): Promise<string[]> {
+  return Promise.all(
+    files.map(
+      (file) =>
+        new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(String(reader.result || ""));
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        })
+    )
+  );
+}
+
 export default function CreatePage() {
   const router = useRouter();
 
@@ -207,7 +221,7 @@ export default function CreatePage() {
   const [price, setPrice] = useState<string>("");
   const [contact, setContact] = useState<string>("");
   const [messenger, setMessenger] = useState<MessengerType>("Telegram");
-  const [image, setImage] = useState<string>("");
+  const [images, setImages] = useState<string[]>([]);
   const [isOwnerConfirmed, setIsOwnerConfirmed] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -240,15 +254,17 @@ export default function CreatePage() {
     setDistrict(nextDistrict);
   };
 
-  const handleImageChange = (e: ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const handleImagesChange = async (e: ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
+    if (!files.length) return;
 
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setImage(String(reader.result || ""));
-    };
-    reader.readAsDataURL(file);
+    try {
+      const dataUrls = await readFilesAsDataUrls(files);
+      setImages(dataUrls);
+    } catch (error) {
+      console.error(error);
+      alert("Помилка при завантаженні фото");
+    }
   };
 
   const handleSubmit = async () => {
@@ -296,7 +312,7 @@ export default function CreatePage() {
         price,
         contact: normalizedContact,
         messenger,
-        image,
+        image: JSON.stringify(images),
         status,
         createdat: new Date().toISOString(),
       },
@@ -319,7 +335,7 @@ export default function CreatePage() {
     setPrice("");
     setContact("");
     setMessenger("Telegram");
-    setImage("");
+    setImages([]);
     setIsOwnerConfirmed(false);
 
     router.push("/");
@@ -467,7 +483,7 @@ export default function CreatePage() {
         </div>
 
         <div style={{ marginTop: "20px" }}>
-          <label style={labelStyle}>Фото</label>
+          <label style={labelStyle}>Фото (можна кілька)</label>
           <div
             style={{
               border: "2px dashed #cbd5e1",
@@ -479,7 +495,8 @@ export default function CreatePage() {
             <input
               type="file"
               accept="image/*"
-              onChange={handleImageChange}
+              multiple
+              onChange={handleImagesChange}
               style={{ width: "100%", boxSizing: "border-box" }}
             />
             <p
@@ -489,25 +506,36 @@ export default function CreatePage() {
                 fontSize: "14px",
               }}
             >
-              Завантаж головне фото квартири, дому або гаража.
+              Завантаж стільки фото, скільки потрібно.
             </p>
           </div>
         </div>
 
-        {image && (
+        {images.length > 0 && (
           <div style={{ marginTop: "20px" }}>
             <label style={labelStyle}>Попередній перегляд</label>
-            <img
-              src={image}
-              alt="Попередній перегляд"
+            <div
               style={{
-                width: "100%",
-                maxHeight: "360px",
-                objectFit: "cover",
-                borderRadius: "14px",
-                border: "1px solid #e5e7eb",
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))",
+                gap: "12px",
               }}
-            />
+            >
+              {images.map((img, index) => (
+                <img
+                  key={`${img}-${index}`}
+                  src={img}
+                  alt={`Фото ${index + 1}`}
+                  style={{
+                    width: "100%",
+                    height: "120px",
+                    objectFit: "cover",
+                    borderRadius: "12px",
+                    border: "1px solid #e5e7eb",
+                  }}
+                />
+              ))}
+            </div>
           </div>
         )}
 
