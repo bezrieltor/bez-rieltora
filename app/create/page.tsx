@@ -7,20 +7,185 @@ import { supabase } from "@/lib/supabase";
 type PropertyType = "Квартира" | "Дім" | "Гараж";
 type MessengerType = "Telegram" | "Viber" | "WhatsApp" | "Телефон";
 
-const oblastDistricts: Record<string, string[]> = {
-  "Київська область": ["Білоцерківський", "Бориспільський", "Броварський"],
-  "Львівська область": ["Львівський", "Дрогобицький"],
-  "Одеська область": ["Одеський", "Ізмаїльський"],
-  "Дніпропетровська область": ["Дніпровський", "Криворізький"],
-  "м. Київ": ["Шевченківський", "Печерський", "Дарницький"],
-};
-
-const oblastCenterCities: Record<string, string[]> = {
-  "Київська область": ["Біла Церква", "Бровари"],
-  "Львівська область": ["Львів"],
-  "Одеська область": ["Одеса"],
-  "Дніпропетровська область": ["Дніпро"],
-  "м. Київ": ["Київ"],
+const locationData: Record<
+  string,
+  Record<string, string[]>
+> = {
+  "Вінницька область": {
+    "Вінниця": ["Замостянський", "Вишенський", "Староміський"],
+    "Жмеринка": ["Центральний"],
+    "Могилів-Подільський": ["Центральний"],
+  },
+  "Волинська область": {
+    "Луцьк": ["Центральний", "33-й район", "Теремно"],
+    "Ковель": ["Центральний"],
+    "Володимир": ["Центральний"],
+  },
+  "Дніпропетровська область": {
+    "Дніпро": [
+      "Амур-Нижньодніпровський",
+      "Індустріальний",
+      "Новокодацький",
+      "Самарський",
+      "Соборний",
+      "Центральний",
+      "Чечелівський",
+      "Шевченківський",
+    ],
+    "Кривий Ріг": [
+      "Металургійний",
+      "Саксаганський",
+      "Покровський",
+      "Довгинцівський",
+      "Інгулецький",
+      "Тернівський",
+      "Центрально-Міський",
+    ],
+    "Кам’янське": ["Заводський", "Південний", "Дніпровський"],
+  },
+  "Житомирська область": {
+    "Житомир": ["Богунський", "Корольовський"],
+    "Бердичів": ["Центральний"],
+    "Коростень": ["Центральний"],
+  },
+  "Закарпатська область": {
+    "Ужгород": ["Центральний", "БАМ", "Радванка"],
+    "Мукачево": ["Центральний"],
+    "Хуст": ["Центральний"],
+  },
+  "Запорізька область": {
+    "Запоріжжя": [
+      "Вознесенівський",
+      "Дніпровський",
+      "Заводський",
+      "Комунарський",
+      "Олександрівський",
+      "Хортицький",
+      "Шевченківський",
+    ],
+    "Бердянськ": ["Центральний"],
+    "Мелітополь": ["Центральний"],
+  },
+  "Івано-Франківська область": {
+    "Івано-Франківськ": ["Центр", "Пасічна", "Каскад", "БАМ"],
+    "Калуш": ["Центральний"],
+    "Коломия": ["Центральний"],
+  },
+  "Київська область": {
+    "Біла Церква": ["Центральний", "Піщаний", "Таращанський"],
+    "Бориспіль": ["Центральний", "Соцмістечко"],
+    "Бровари": ["Центральний", "Торгмаш", "Масив"],
+    "Буча": ["Центральний", "Яблунька"],
+    "Вишгород": ["Центральний"],
+    "Ірпінь": ["Центральний", "Синергія", "Стоянка"],
+    "Обухів": ["Центральний"],
+    "Фастів": ["Центральний"],
+  },
+  "Кіровоградська область": {
+    "Кропивницький": ["Подільський", "Фортечний"],
+    "Олександрія": ["Центральний"],
+    "Світловодськ": ["Центральний"],
+  },
+  "Львівська область": {
+    "Львів": [
+      "Галицький",
+      "Залізничний",
+      "Личаківський",
+      "Сихівський",
+      "Франківський",
+      "Шевченківський",
+    ],
+    "Дрогобич": ["Центральний"],
+    "Стрий": ["Центральний"],
+    "Червоноград": ["Центральний"],
+  },
+  "Миколаївська область": {
+    "Миколаїв": ["Заводський", "Інгульський", "Корабельний", "Центральний"],
+    "Первомайськ": ["Центральний"],
+    "Вознесенськ": ["Центральний"],
+  },
+  "Одеська область": {
+    "Одеса": [
+      "Київський",
+      "Пересипський",
+      "Приморський",
+      "Хаджибейський",
+    ],
+    "Чорноморськ": ["Центральний"],
+    "Ізмаїл": ["Центральний"],
+    "Подільськ": ["Центральний"],
+  },
+  "Полтавська область": {
+    "Полтава": ["Київський", "Подільський", "Шевченківський"],
+    "Кременчук": ["Автозаводський", "Крюківський"],
+    "Миргород": ["Центральний"],
+  },
+  "Рівненська область": {
+    "Рівне": ["Центральний", "Північний", "Ювілейний"],
+    "Дубно": ["Центральний"],
+    "Вараш": ["Центральний"],
+  },
+  "Сумська область": {
+    "Суми": ["Зарічний", "Ковпаківський"],
+    "Конотоп": ["Центральний"],
+    "Шостка": ["Центральний"],
+  },
+  "Тернопільська область": {
+    "Тернопіль": ["Центр", "Дружба", "БАМ", "Східний", "Канада"],
+    "Чортків": ["Центральний"],
+    "Кременець": ["Центральний"],
+  },
+  "Харківська область": {
+    "Харків": [
+      "Індустріальний",
+      "Київський",
+      "Немишлянський",
+      "Новобаварський",
+      "Основ’янський",
+      "Салтівський",
+      "Слобідський",
+      "Холодногірський",
+      "Шевченківський",
+    ],
+    "Лозова": ["Центральний"],
+    "Чугуїв": ["Центральний"],
+  },
+  "Херсонська область": {
+    "Херсон": ["Дніпровський", "Корабельний", "Центральний"],
+  },
+  "Хмельницька область": {
+    "Хмельницький": ["Виставка", "Дубове", "Озерна", "Ракове", "Центр"],
+    "Кам’янець-Подільський": ["Центральний"],
+    "Шепетівка": ["Центральний"],
+  },
+  "Черкаська область": {
+    "Черкаси": ["Придніпровський", "Соснівський"],
+    "Умань": ["Центральний"],
+    "Сміла": ["Центральний"],
+  },
+  "Чернівецька область": {
+    "Чернівці": ["Першотравневий", "Шевченківський", "Садгірський"],
+    "Хотин": ["Центральний"],
+  },
+  "Чернігівська область": {
+    "Чернігів": ["Деснянський", "Новозаводський"],
+    "Ніжин": ["Центральний"],
+    "Прилуки": ["Центральний"],
+  },
+  "м. Київ": {
+    "Київ": [
+      "Голосіївський",
+      "Дарницький",
+      "Деснянський",
+      "Дніпровський",
+      "Оболонський",
+      "Печерський",
+      "Подільський",
+      "Святошинський",
+      "Солом’янський",
+      "Шевченківський",
+    ],
+  },
 };
 
 function makeAdId() {
@@ -29,14 +194,16 @@ function makeAdId() {
 
 export default function CreatePage() {
   const router = useRouter();
-  const oblasts = Object.keys(oblastDistricts);
+
+  const oblasts = useMemo(() => Object.keys(locationData), []);
+  const defaultOblast = "м. Київ";
+  const defaultCity = Object.keys(locationData[defaultOblast])[0];
+  const defaultDistrict = locationData[defaultOblast][defaultCity][0];
 
   const [propertyType, setPropertyType] = useState<PropertyType>("Квартира");
-  const [oblast, setOblast] = useState<string>("м. Київ");
-  const [city, setCity] = useState<string>(oblastCenterCities["м. Київ"][0]);
-  const [district, setDistrict] = useState<string>(
-    oblastDistricts["м. Київ"][0]
-  );
+  const [oblast, setOblast] = useState<string>(defaultOblast);
+  const [city, setCity] = useState<string>(defaultCity);
+  const [district, setDistrict] = useState<string>(defaultDistrict);
   const [price, setPrice] = useState<string>("");
   const [contact, setContact] = useState<string>("");
   const [messenger, setMessenger] = useState<MessengerType>("Telegram");
@@ -44,17 +211,33 @@ export default function CreatePage() {
   const [isOwnerConfirmed, setIsOwnerConfirmed] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const districts = useMemo(() => oblastDistricts[oblast] ?? [], [oblast]);
-  const cities = useMemo(() => oblastCenterCities[oblast] ?? [], [oblast]);
+  const cities = useMemo(() => {
+    return Object.keys(locationData[oblast] ?? {});
+  }, [oblast]);
+
+  const districts = useMemo(() => {
+    return locationData[oblast]?.[city] ?? [];
+  }, [oblast, city]);
 
   const handleOblastChange = (e: ChangeEvent<HTMLSelectElement>) => {
     const nextOblast = e.target.value;
-    const nextDistricts = oblastDistricts[nextOblast] ?? [];
-    const nextCities = oblastCenterCities[nextOblast] ?? [];
+    const nextCities = Object.keys(locationData[nextOblast] ?? {});
+    const nextCity = nextCities[0] ?? "";
+    const nextDistricts = locationData[nextOblast]?.[nextCity] ?? [];
+    const nextDistrict = nextDistricts[0] ?? "";
 
     setOblast(nextOblast);
-    setDistrict(nextDistricts[0] ?? "");
-    setCity(nextCities[0] ?? "");
+    setCity(nextCity);
+    setDistrict(nextDistrict);
+  };
+
+  const handleCityChange = (e: ChangeEvent<HTMLSelectElement>) => {
+    const nextCity = e.target.value;
+    const nextDistricts = locationData[oblast]?.[nextCity] ?? [];
+    const nextDistrict = nextDistricts[0] ?? "";
+
+    setCity(nextCity);
+    setDistrict(nextDistrict);
   };
 
   const handleImageChange = (e: ChangeEvent<HTMLInputElement>) => {
@@ -69,7 +252,7 @@ export default function CreatePage() {
   };
 
   const handleSubmit = async () => {
-    if (!oblast || !district || !city || !price || !contact) {
+    if (!oblast || !city || !district || !price || !contact) {
       alert("Заповни всі поля");
       return;
     }
@@ -101,16 +284,15 @@ export default function CreatePage() {
       return;
     }
 
-    const status =
-      existing && existing.length >= 1 ? "suspicious" : "active";
+    const status = existing && existing.length >= 1 ? "suspicious" : "active";
 
     const { error } = await supabase.from("listings").insert([
       {
         id: makeAdId(),
         propertytype: propertyType,
         oblast,
-        district,
         city,
+        district,
         price,
         contact: normalizedContact,
         messenger,
@@ -131,9 +313,9 @@ export default function CreatePage() {
     alert("Оголошення додано");
 
     setPropertyType("Квартира");
-    setOblast("м. Київ");
-    setCity(oblastCenterCities["м. Київ"][0]);
-    setDistrict(oblastDistricts["м. Київ"][0]);
+    setOblast(defaultOblast);
+    setCity(defaultCity);
+    setDistrict(defaultDistrict);
     setPrice("");
     setContact("");
     setMessenger("Telegram");
@@ -220,10 +402,10 @@ export default function CreatePage() {
           </div>
 
           <div style={fieldBlockStyle}>
-            <label style={labelStyle}>Обласне місто</label>
+            <label style={labelStyle}>Місто</label>
             <select
               value={city}
-              onChange={(e) => setCity(e.target.value)}
+              onChange={handleCityChange}
               style={inputStyle}
             >
               {cities.map((cityName) => (
@@ -235,7 +417,7 @@ export default function CreatePage() {
           </div>
 
           <div style={fieldBlockStyle}>
-            <label style={labelStyle}>Район</label>
+            <label style={labelStyle}>Район міста</label>
             <select
               value={district}
               onChange={(e) => setDistrict(e.target.value)}
