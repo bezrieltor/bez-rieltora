@@ -201,7 +201,8 @@ export default function CreatePage() {
 
     try {
       const dataUrls = await readFilesAsDataUrls(files);
-      setImages(dataUrls);
+      setImages((prev) => [...prev, ...dataUrls]);
+      e.target.value = "";
     } catch (error) {
       console.error(error);
       alert("Помилка при завантаженні фото");
