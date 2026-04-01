@@ -196,6 +196,25 @@ const locationData: Record<string, Record<string, string[]>> = {
   },
 };
 
+function getCoverImage(imageValue: string | null | undefined): string {
+  if (!imageValue) return "";
+
+  try {
+    const parsed = JSON.parse(imageValue);
+
+    if (Array.isArray(parsed)) {
+      const firstImage = parsed.find(
+        (item) => typeof item === "string" && item.trim() !== ""
+      );
+      return firstImage || "";
+    }
+  } catch {
+    // старий формат: одне фото як рядок
+  }
+
+  return typeof imageValue === "string" ? imageValue : "";
+}
+
 export default function HomePage() {
   const [ads, setAds] = useState<Ad[]>([]);
   const [selectedOblast, setSelectedOblast] = useState<string>("Усі області");
@@ -223,7 +242,7 @@ export default function HomePage() {
         price: item.price,
         contact: item.contact,
         messenger: item.messenger,
-        image: item.image,
+        image: getCoverImage(item.image),
         status: item.status,
         createdAt: item.createdat,
       }));
