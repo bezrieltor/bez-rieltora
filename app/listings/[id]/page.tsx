@@ -25,7 +25,9 @@ function parseImages(imageValue: string | null | undefined): string[] {
   try {
     const parsed = JSON.parse(imageValue);
     if (Array.isArray(parsed)) {
-      return parsed.filter((item) => typeof item === "string" && item.trim() !== "");
+      return parsed.filter(
+        (item) => typeof item === "string" && item.trim() !== ""
+      );
     }
   } catch {
     // старий формат з одним фото
@@ -132,6 +134,26 @@ export default function ListingPage() {
     () => getMessengerHref(ad?.messenger ?? "", ad?.contact ?? ""),
     [ad?.messenger, ad?.contact]
   );
+
+  const normalizedPhone = useMemo(
+    () => normalizePhoneForTel(ad?.contact ?? ""),
+    [ad?.contact]
+  );
+
+  const whatsappHref = useMemo(() => {
+    const phone = normalizedPhone.replace("+", "");
+    return phone ? `https://wa.me/${phone}` : null;
+  }, [normalizedPhone]);
+
+  const viberHref = useMemo(() => {
+    return normalizedPhone
+      ? `viber://chat?number=${encodeURIComponent(normalizedPhone)}`
+      : null;
+  }, [normalizedPhone]);
+
+  const telHref = useMemo(() => {
+    return normalizedPhone ? `tel:${normalizedPhone}` : null;
+  }, [normalizedPhone]);
 
   const handleReport = async () => {
     if (!listingId) return;
@@ -283,7 +305,10 @@ export default function ListingPage() {
                 onClick={() => setSelectedImage(img)}
                 style={{
                   padding: 0,
-                  border: selectedImage === img ? "2px solid #2563eb" : "1px solid #e5e7eb",
+                  border:
+                    selectedImage === img
+                      ? "2px solid #2563eb"
+                      : "1px solid #e5e7eb",
                   borderRadius: "10px",
                   overflow: "hidden",
                   cursor: "pointer",
@@ -451,35 +476,68 @@ export default function ListingPage() {
               <p style={{ marginTop: 0, marginBottom: "8px" }}>
                 <strong>Месенджер:</strong> {ad.messenger}
               </p>
+
               <p style={{ marginTop: 0, marginBottom: "14px" }}>
                 <strong>Контакт:</strong> {ad.contact}
               </p>
 
-              {messengerHref && (
-                <a
-                  href={messengerHref}
-                  target={ad.messenger === "Телефон" ? "_self" : "_blank"}
-                  rel="noreferrer"
-                  style={{
-                    display: "inline-block",
-                    padding: "12px 16px",
-                    background: "#2563eb",
-                    color: "#ffffff",
-                    textDecoration: "none",
-                    borderRadius: "10px",
-                    fontWeight: 700,
-                  }}
-                >
-                  {getMessengerButtonText(ad.messenger)}
-                </a>
-              )}
-
-              {ad.messenger !== "Телефон" && (
-                <div style={{ marginTop: "12px" }}>
+              <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+                {messengerHref && (
                   <a
-                    href={`tel:${normalizePhoneForTel(ad.contact)}`}
+                    href={messengerHref}
+                    target={ad.messenger === "Телефон" ? "_self" : "_blank"}
+                    rel="noreferrer"
                     style={{
-                      display: "inline-block",
+                      padding: "12px 16px",
+                      background: "#2563eb",
+                      color: "#ffffff",
+                      textDecoration: "none",
+                      borderRadius: "10px",
+                      fontWeight: 700,
+                    }}
+                  >
+                    {getMessengerButtonText(ad.messenger)}
+                  </a>
+                )}
+
+                {whatsappHref && (
+                  <a
+                    href={whatsappHref}
+                    target="_blank"
+                    rel="noreferrer"
+                    style={{
+                      padding: "12px 16px",
+                      background: "#25D366",
+                      color: "#ffffff",
+                      textDecoration: "none",
+                      borderRadius: "10px",
+                      fontWeight: 700,
+                    }}
+                  >
+                    WhatsApp
+                  </a>
+                )}
+
+                {viberHref && (
+                  <a
+                    href={viberHref}
+                    style={{
+                      padding: "12px 16px",
+                      background: "#7360F2",
+                      color: "#ffffff",
+                      textDecoration: "none",
+                      borderRadius: "10px",
+                      fontWeight: 700,
+                    }}
+                  >
+                    Viber
+                  </a>
+                )}
+
+                {telHref && (
+                  <a
+                    href={telHref}
+                    style={{
                       padding: "12px 16px",
                       background: "#16a34a",
                       color: "#ffffff",
@@ -490,8 +548,8 @@ export default function ListingPage() {
                   >
                     Подзвонити
                   </a>
-                </div>
-              )}
+                )}
+              </div>
             </div>
 
             {!reported && (
